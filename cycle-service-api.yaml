@@ -2,10 +2,14 @@ openapi: 3.0.3
 info:
   title: LottiesPeriod - Cycle Service API
   description: |
-    Menstrual cycle management - storing and tracking cycle timelines, start/end dates, and cycle history.
+    API for tracking menstrual cycles and menstruation data.
     
+    Terminology Guide:
+    - Cycle: The entire reproductive timeframe (Example: 28 days). Starts on Day 1 of bleeding. Ends the day before the next bleeding event.
+    - Menstruation: The specific phase of bleeding (Example: 5 days). This is a subset of the Cycle.
+
     **Authentication**: All endpoints require Bearer JWT token in Authorization header.
-  version: 1.0.0
+  version: 1.0.1
   contact:
     name: LottiesPeriod API Support
 
@@ -69,24 +73,20 @@ paths:
                       $ref: '#/components/schemas/Cycle'
                   pagination:
                     $ref: '#/components/schemas/Pagination'
-        '400':
-          description: Invalid query parameters
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '401':
           description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
     post:
       tags:
         - Cycles
-      summary: Start new cycle
-      description: Manually start a new menstrual cycle
+      summary: Start a new Cycle (Log Start of Menstruation)
+      description: |
+        Triggers the start of a new Cycle.
+        
+        Logic: 
+        1. This sets the Cycle Start Date.
+        2. By definition, this is also the Menstruation (bleeding) Start Date.
+        3. If a previous cycle is `ACTIVE`, it is automatically `CLOSED` with an end date of (`newStartDate` - 1 day).
       requestBody:
         required: true
         content:
@@ -101,13 +101,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Cycle'
         '400':
-          description: Invalid request or active cycle already exists
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
+          description: Invalid date (e.g. in future)
           content:
             application/json:
               schema:
@@ -134,24 +128,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cycle'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '404':
           description: Cycle not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
     patch:
       tags:
         - Cycles
-      summary: Update cycle
-      description: Update cycle details (e.g., set ovulation day)
+      summary: Update cycle or menstruation details
+      description: |
+        Used to:
+        1. Correct the `startDate` (if user forgot to log it on time).
+        2. Set the `menstruationEndDate` (when bleeding stops).
       parameters:
         - name: cycleId
           in: path
@@ -174,154 +161,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/Cycle'
         '400':
-          description: Invalid request data
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Cycle not found
+          description: Invalid data (e.g. menstruationEndDate before startDate)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /{cycleId}/close:
-    post:
-      tags:
-        - Cycles
-      summary: Close cycle
-      description: Close an active cycle (automatically triggered when new cycle starts)
-      parameters:
-        - name: cycleId
-          in: path
-          required: true
-          description: Unique identifier of the cycle
-          schema:
-            type: string
-            format: uuid
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - endDate
-              properties:
-                endDate:
-                  type: string
-                  format: date
-                  example: "2024-11-20"
-      responses:
-        '200':
-          description: Cycle closed successfully
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Cycle'
-        '400':
-          description: Invalid request or cycle already closed
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: Cycle not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
   /current:
     get:
       tags:
         - Cycles
       summary: Get current active cycle
-      description: Retrieve the currently active menstrual cycle
       responses:
         '200':
-          description: Current cycle retrieved successfully
+          description: Active cycle retrieved
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Cycle'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
         '404':
           description: No active cycle found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
-  /user/{userId}:
-    get:
-      tags:
-        - Cycles
-      summary: Get cycles for specific user
-      description: Internal endpoint for other services to fetch user cycle history
-      parameters:
-        - name: userId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-        - name: limit
-          in: query
-          schema:
-            type: integer
-            minimum: 1
-            maximum: 100
-            default: 12
-        - name: status
-          in: query
-          schema:
-            type: string
-            enum:
-              - ACTIVE
-              - CLOSED
-      responses:
-        '200':
-          description: Cycles retrieved successfully
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  cycles:
-                    type: array
-                    items:
-                      $ref: '#/components/schemas/Cycle'
-        '401':
-          description: Unauthorized
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-        '404':
-          description: User not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
 components:
   securitySchemes:
@@ -333,6 +193,7 @@ components:
   schemas:
     Cycle:
       type: object
+      description: Represents the full timeframe from one menstruation start to the next menstruation start.
       properties:
         id:
           type: string
@@ -345,39 +206,56 @@ components:
         startDate:
           type: string
           format: date
-          example: "2024-10-15"
+          example: "2024-10-01"
+          description: Day 1 of the Cycle. This is also Day 1 of bleeding.
         endDate:
           type: string
           format: date
           nullable: true
-          example: "2024-11-12"
-          description: Null if cycle is still active
+          example: "2024-10-28"
+          description: The last day of the cycle (usually the day before next bleeding). Null if cycle is ACTIVE.
+
+        menstruationEndDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-10-05"
+          description: The specific date bleeding stopped.
+        menstruationLengthInDays:
+          type: integer
+          nullable: true
+          example: 5
+          description: Calculated duration of bleeding (StartDate -> MenstruationEndDate).
+
+        cycleLengthInDays:
+          type: integer
+          nullable: true
+          example: 28
+          description: Total duration (From StartDate to EndDate). Null if cycle is ACTIVE.
+        
+        ovulationDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-10-14"
+          description: Predicted date of ovulation.
+        
         status:
           type: string
           enum:
             - ACTIVE
             - CLOSED
           example: "CLOSED"
-        lengthInDays:
-          type: integer
-          nullable: true
-          example: 28
-          description: Total cycle length (only available for closed cycles)
-        ovulationDay:
-          type: integer
-          nullable: true
-          example: 14
-          description: Day of ovulation within the cycle (1-indexed)
         currentPhase:
           type: string
           enum:
-            - MENSTRUAL
-            - FOLLICULAR
-            - OVULATION
-            - LUTEAL
+            - MENSTRUATION_PHASE
+            - FOLLICULAR_PHASE
+            - OVULATION_PHASE
+            - LUTEAL_PHASE
           nullable: true
-          example: "LUTEAL"
-          description: Current cycle phase (for active cycles)
+          example: "LUTEAL_PHASE"
+          description: Calculated phase based on current date relative to start/ovulation dates.
         notes:
           type: string
           maxLength: 500
@@ -385,11 +263,9 @@ components:
         createdAt:
           type: string
           format: date-time
-          example: "2024-10-15T08:00:00Z"
         updatedAt:
           type: string
           format: date-time
-          example: "2024-11-12T20:15:00Z"
 
     StartCycleRequest:
       type: object
@@ -400,6 +276,12 @@ components:
           type: string
           format: date
           example: "2024-11-20"
+          description: The day bleeding began.
+        menstruationEndDate:
+          type: string
+          format: date
+          nullable: false
+          description: The day bleeding will stop/stopped. (If it's in the future, it is the predicted end date of bleeding.)
         notes:
           type: string
           maxLength: 500
@@ -407,12 +289,14 @@ components:
     UpdateCycleRequest:
       type: object
       properties:
-        ovulationDay:
-          type: integer
-          minimum: 1
-          maximum: 50
-          example: 14
-          description: Day of ovulation within the cycle
+        startDate:
+          type: string
+          format: date
+          description: Update if user misremembered the start day. Warning - Recalculates all cycle stats.
+        menstruationEndDate:
+          type: string
+          format: date
+          description: Set this when the user indicates bleeding has stopped.
         notes:
           type: string
           maxLength: 500
@@ -438,13 +322,12 @@ components:
       properties:
         code:
           type: string
-          example: "INVALID_REQUEST"
+          example: "INVALID_DATE_SEQUENCE"
         message:
           type: string
-          example: "The request contains invalid data"
+          example: "Menstruation end date cannot be before cycle start date."
         details:
           type: object
-          additionalProperties: true
           nullable: true
         timestamp:
           type: string
