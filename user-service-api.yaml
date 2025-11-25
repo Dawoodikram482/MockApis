@@ -1,0 +1,582 @@
+openapi: 3.0.3
+info:
+  title: LottiesPeriod - User Service API
+  description: |
+    User profiles, consents, notification preferences, and push token management for LottiesPeriod platform.
+    
+    **Authentication**: All endpoints require Bearer JWT token in Authorization header.
+  version: 1.0.0
+  contact:
+    name: LottiesPeriod API Support
+
+servers:
+  - url: https://api.lottiesperiod.com/v1/users
+    description: Production server
+  - url: https://staging-api.lottiesperiod.com/v1/users
+    description: Staging server
+  - url: http://localhost:8086/v1/users
+    description: Local development server
+
+tags:
+  - name: Profile
+    description: User profile management
+  - name: Consents
+    description: User consent management
+  - name: Notification Preferences
+    description: Notification preference settings
+  - name: Push Tokens
+    description: FCM push token management
+
+security:
+  - BearerAuth: []
+
+paths:
+  /me:
+    get:
+      tags:
+        - Profile
+      summary: Get current user profile
+      description: Retrieve authenticated user's profile information
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Profile
+      summary: Update user profile
+      description: Update authenticated user's profile information
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateProfileRequest'
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{userId}:
+    get:
+      tags:
+        - Profile
+      summary: Get user by ID
+      description: Retrieve user profile by user ID (admin or self only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: User profile retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{userId}/consents:
+    get:
+      tags:
+        - Consents
+      summary: Get user consents
+      description: Get all consent statuses for a specific user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: List of consents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Consent'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /me/consents:
+    get:
+      tags:
+        - Consents
+      summary: List my consents
+      description: Get all consent statuses for the authenticated user
+      responses:
+        '200':
+          description: List of consents retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  consents:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Consent'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Consents
+      summary: Update consent
+      description: Set or update a specific consent status
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateConsentRequest'
+      responses:
+        '200':
+          description: Consent updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Consent'
+        '400':
+          description: Invalid consent type or status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /me/notification-preferences:
+    get:
+      tags:
+        - Notification Preferences
+      summary: Get my notification preferences
+      description: Retrieve all notification preferences for authenticated user
+      responses:
+        '200':
+          description: Notification preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preferences:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationPreference'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Notification Preferences
+      summary: Update notification preferences
+      description: Update notification preferences for specific types
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateNotificationPreferencesRequest'
+      responses:
+        '200':
+          description: Preferences updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preferences:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationPreference'
+        '400':
+          description: Invalid preferences data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{userId}/prefs-and-tokens:
+    get:
+      tags:
+        - Notification Preferences
+        - Push Tokens
+      summary: Get user preferences and push token
+      description: Internal endpoint for Notifications Service to fetch user preferences and push token
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Preferences and token retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                    format: uuid
+                  pushToken:
+                    type: string
+                    nullable: true
+                  platform:
+                    type: string
+                    enum: [ios, android]
+                    nullable: true
+                  notificationPreferences:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationPreference'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /me/push-token:
+    put:
+      tags:
+        - Push Tokens
+      summary: Update push notification token
+      description: Register or update FCM push token for notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - platform
+              properties:
+                token:
+                  type: string
+                  description: FCM device token
+                  example: "fK3jN9mQ2kR:APA91bH..."
+                platform:
+                  type: string
+                  enum: [ios, android]
+                  description: Device platform
+      responses:
+        '204':
+          description: Push token updated successfully
+        '400':
+          description: Invalid token or platform
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token issued by Zitadel IdP
+
+  schemas:
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        externalId:
+          type: string
+          description: Zitadel subject ID
+          example: "254678324567832456"
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        firstName:
+          type: string
+          example: "Jane"
+        lastName:
+          type: string
+          example: "Doe"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1995-06-15"
+          nullable: true
+        profileImageUrl:
+          type: string
+          format: uri
+          example: "https://cdn.lottiesperiod.com/profiles/user123.jpg"
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+
+    UpdateProfileRequest:
+      type: object
+      properties:
+        firstName:
+          type: string
+          example: "Jane"
+        lastName:
+          type: string
+          example: "Doe"
+        dateOfBirth:
+          type: string
+          format: date
+          example: "1995-06-15"
+        profileImageUrl:
+          type: string
+          format: uri
+          example: "https://cdn.lottiesperiod.com/profiles/user123.jpg"
+
+    Consent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "660e8400-e29b-41d4-a716-446655440001"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        consentType:
+          type: string
+          enum:
+            - HEALTH_DATA_COLLECTION
+            - PUSH_NOTIFICATIONS
+            - ANALYTICS
+            - MARKETING
+          example: "HEALTH_DATA_COLLECTION"
+        granted:
+          type: boolean
+          example: true
+        grantedAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+          nullable: true
+        revokedAt:
+          type: string
+          format: date-time
+          nullable: true
+        version:
+          type: string
+          description: Version of the consent agreement
+          example: "1.0"
+
+    UpdateConsentRequest:
+      type: object
+      required:
+        - consentType
+        - granted
+      properties:
+        consentType:
+          type: string
+          enum:
+            - HEALTH_DATA_COLLECTION
+            - PUSH_NOTIFICATIONS
+            - ANALYTICS
+            - MARKETING
+          example: "HEALTH_DATA_COLLECTION"
+        granted:
+          type: boolean
+          example: true
+        version:
+          type: string
+          example: "1.0"
+
+    NotificationPreference:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "770e8400-e29b-41d4-a716-446655440002"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        notificationType:
+          type: string
+          enum:
+            - PERIOD_REMINDER
+            - FERTILE_WINDOW
+            - OVULATION
+            - SYMPTOM_LOG_REMINDER
+            - CONTENT_RECOMMENDATION
+          example: "PERIOD_REMINDER"
+        enabled:
+          type: boolean
+          example: true
+        advanceNotice:
+          type: integer
+          description: Days before event to send notification
+          example: 1
+          nullable: true
+        timeOfDay:
+          type: string
+          format: time
+          description: Preferred time for notification (HH:MM)
+          example: "09:00"
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+
+    UpdateNotificationPreferencesRequest:
+      type: object
+      required:
+        - preferences
+      properties:
+        preferences:
+          type: array
+          items:
+            type: object
+            required:
+              - notificationType
+              - enabled
+            properties:
+              notificationType:
+                type: string
+                enum:
+                  - PERIOD_REMINDER
+                  - FERTILE_WINDOW
+                  - OVULATION
+                  - SYMPTOM_LOG_REMINDER
+                  - CONTENT_RECOMMENDATION
+              enabled:
+                type: boolean
+              advanceNotice:
+                type: integer
+                minimum: 0
+                maximum: 7
+              timeOfDay:
+                type: string
+                format: time
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "INVALID_REQUEST"
+        message:
+          type: string
+          example: "The request contains invalid data"
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"

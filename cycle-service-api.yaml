@@ -1,0 +1,452 @@
+openapi: 3.0.3
+info:
+  title: LottiesPeriod - Cycle Service API
+  description: |
+    Menstrual cycle management - storing and tracking cycle timelines, start/end dates, and cycle history.
+    
+    **Authentication**: All endpoints require Bearer JWT token in Authorization header.
+  version: 1.0.0
+  contact:
+    name: LottiesPeriod API Support
+
+servers:
+  - url: https://api.lottiesperiod.com/v1/cycles
+    description: Production server
+  - url: https://staging-api.lottiesperiod.com/v1/cycles
+    description: Staging server
+  - url: http://localhost:8087/v1/cycles
+    description: Local development server
+
+tags:
+  - name: Cycles
+    description: Menstrual cycle management
+
+security:
+  - BearerAuth: []
+
+paths:
+  /:
+    get:
+      tags:
+        - Cycles
+      summary: List cycles
+      description: Retrieve cycle history for authenticated user
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of cycles to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 12
+        - name: offset
+          in: query
+          description: Number of cycles to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+        - name: status
+          in: query
+          description: Filter by cycle status
+          schema:
+            type: string
+            enum:
+              - ACTIVE
+              - CLOSED
+      responses:
+        '200':
+          description: List of cycles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Cycle'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Cycles
+      summary: Start new cycle
+      description: Manually start a new menstrual cycle
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartCycleRequest'
+      responses:
+        '201':
+          description: Cycle started successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cycle'
+        '400':
+          description: Invalid request or active cycle already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{cycleId}:
+    get:
+      tags:
+        - Cycles
+      summary: Get cycle by ID
+      description: Retrieve a specific cycle with detailed information
+      parameters:
+        - name: cycleId
+          in: path
+          required: true
+          description: Unique identifier of the cycle
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Cycle retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cycle'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Cycle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Cycles
+      summary: Update cycle
+      description: Update cycle details (e.g., set ovulation day)
+      parameters:
+        - name: cycleId
+          in: path
+          required: true
+          description: Unique identifier of the cycle
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCycleRequest'
+      responses:
+        '200':
+          description: Cycle updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cycle'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Cycle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /{cycleId}/close:
+    post:
+      tags:
+        - Cycles
+      summary: Close cycle
+      description: Close an active cycle (automatically triggered when new cycle starts)
+      parameters:
+        - name: cycleId
+          in: path
+          required: true
+          description: Unique identifier of the cycle
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - endDate
+              properties:
+                endDate:
+                  type: string
+                  format: date
+                  example: "2024-11-20"
+      responses:
+        '200':
+          description: Cycle closed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cycle'
+        '400':
+          description: Invalid request or cycle already closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Cycle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /current:
+    get:
+      tags:
+        - Cycles
+      summary: Get current active cycle
+      description: Retrieve the currently active menstrual cycle
+      responses:
+        '200':
+          description: Current cycle retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Cycle'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No active cycle found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /user/{userId}:
+    get:
+      tags:
+        - Cycles
+      summary: Get cycles for specific user
+      description: Internal endpoint for other services to fetch user cycle history
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 12
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum:
+              - ACTIVE
+              - CLOSED
+      responses:
+        '200':
+          description: Cycles retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  cycles:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Cycle'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Cycle:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "aa0e8400-e29b-41d4-a716-446655440005"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        startDate:
+          type: string
+          format: date
+          example: "2024-10-15"
+        endDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-11-12"
+          description: Null if cycle is still active
+        status:
+          type: string
+          enum:
+            - ACTIVE
+            - CLOSED
+          example: "CLOSED"
+        lengthInDays:
+          type: integer
+          nullable: true
+          example: 28
+          description: Total cycle length (only available for closed cycles)
+        ovulationDay:
+          type: integer
+          nullable: true
+          example: 14
+          description: Day of ovulation within the cycle (1-indexed)
+        currentPhase:
+          type: string
+          enum:
+            - MENSTRUAL
+            - FOLLICULAR
+            - OVULATION
+            - LUTEAL
+          nullable: true
+          example: "LUTEAL"
+          description: Current cycle phase (for active cycles)
+        notes:
+          type: string
+          maxLength: 500
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-10-15T08:00:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-11-12T20:15:00Z"
+
+    StartCycleRequest:
+      type: object
+      required:
+        - startDate
+      properties:
+        startDate:
+          type: string
+          format: date
+          example: "2024-11-20"
+        notes:
+          type: string
+          maxLength: 500
+
+    UpdateCycleRequest:
+      type: object
+      properties:
+        ovulationDay:
+          type: integer
+          minimum: 1
+          maximum: 50
+          example: 14
+          description: Day of ovulation within the cycle
+        notes:
+          type: string
+          maxLength: 500
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 12
+        limit:
+          type: integer
+          example: 12
+        offset:
+          type: integer
+          example: 0
+        hasMore:
+          type: boolean
+          example: false
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "INVALID_REQUEST"
+        message:
+          type: string
+          example: "The request contains invalid data"
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"

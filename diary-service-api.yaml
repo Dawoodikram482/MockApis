@@ -1,0 +1,539 @@
+openapi: 3.0.3
+info:
+  title: LottiesPeriod - Diary Service API
+  description: |
+    Daily logging of symptoms, moods, notes, and flow intensity for period tracking.
+    
+    **Authentication**: All endpoints require Bearer JWT token in Authorization header.
+  version: 1.0.0
+  contact:
+    name: LottiesPeriod API Support
+
+servers:
+  - url: https://api.lottiesperiod.com/v1/diary
+    description: Production server
+  - url: https://staging-api.lottiesperiod.com/v1/diary
+    description: Staging server
+  - url: http://localhost:8081/v1/diary
+    description: Local development server
+
+tags:
+  - name: Diary Entries
+    description: CRUD operations for daily diary entries
+  - name: Reference Data
+    description: Available moods and symptoms configuration
+
+security:
+  - BearerAuth: []
+
+paths:
+  /entries:
+    get:
+      tags:
+        - Diary Entries
+      summary: List diary entries
+      description: Retrieve diary entries for the authenticated user with optional filtering
+      parameters:
+        - name: startDate
+          in: query
+          description: Filter entries from this date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2024-11-01"
+        - name: endDate
+          in: query
+          description: Filter entries until this date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2024-11-30"
+        - name: limit
+          in: query
+          description: Maximum number of entries to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 30
+        - name: offset
+          in: query
+          description: Number of entries to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of diary entries retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/DiaryEntry'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    post:
+      tags:
+        - Diary Entries
+      summary: Create diary entry
+      description: Create a new diary entry for a specific date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDiaryEntryRequest'
+      responses:
+        '201':
+          description: Diary entry created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaryEntry'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Entry already exists for this date
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /entries/{entryId}:
+    get:
+      tags:
+        - Diary Entries
+      summary: Get diary entry by ID
+      description: Retrieve a specific diary entry
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          description: Unique identifier of the diary entry
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Diary entry retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaryEntry'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Diary entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    put:
+      tags:
+        - Diary Entries
+      summary: Update diary entry
+      description: Update an existing diary entry
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          description: Unique identifier of the diary entry
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDiaryEntryRequest'
+      responses:
+        '200':
+          description: Diary entry updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaryEntry'
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Diary entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    delete:
+      tags:
+        - Diary Entries
+      summary: Delete diary entry
+      description: Delete a specific diary entry
+      parameters:
+        - name: entryId
+          in: path
+          required: true
+          description: Unique identifier of the diary entry
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Diary entry deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Diary entry not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /entries/date/{date}:
+    get:
+      tags:
+        - Diary Entries
+      summary: Get diary entry by date
+      description: Retrieve diary entry for a specific date
+      parameters:
+        - name: date
+          in: path
+          required: true
+          description: Date in YYYY-MM-DD format
+          schema:
+            type: string
+            format: date
+            example: "2024-11-20"
+      responses:
+        '200':
+          description: Diary entry retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DiaryEntry'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No entry found for this date
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /config/moods:
+    get:
+      tags:
+        - Reference Data
+      summary: Get available mood types
+      description: Retrieve list of all available mood types for diary entries
+      responses:
+        '200':
+          description: Mood types retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  moods:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MoodType'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /config/symptoms:
+    get:
+      tags:
+        - Reference Data
+      summary: Get available symptom types
+      description: Retrieve list of all available symptom types for diary entries
+      responses:
+        '200':
+          description: Symptom types retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  symptoms:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SymptomType'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    DiaryEntry:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        date:
+          type: string
+          format: date
+          example: "2024-11-20"
+        flowLevel:
+          type: string
+          enum:
+            - NONE
+            - SPOTTING
+            - LIGHT
+            - MEDIUM
+            - HEAVY
+          example: "MEDIUM"
+          nullable: true
+        moods:
+          type: array
+          items:
+            type: string
+          example: ["HAPPY", "ENERGETIC"]
+        symptoms:
+          type: array
+          items:
+            type: string
+          example: ["CRAMPS", "HEADACHE"]
+        notes:
+          type: string
+          maxLength: 1000
+          example: "Felt good today, light exercise"
+          nullable: true
+        isBleedingDay:
+          type: boolean
+          description: Whether this is a bleeding day (derived from flowLevel)
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T08:30:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+
+    CreateDiaryEntryRequest:
+      type: object
+      required:
+        - date
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2024-11-20"
+        flowLevel:
+          type: string
+          enum:
+            - NONE
+            - SPOTTING
+            - LIGHT
+            - MEDIUM
+            - HEAVY
+          example: "MEDIUM"
+        moods:
+          type: array
+          items:
+            type: string
+          example: ["HAPPY", "ENERGETIC"]
+          maxItems: 10
+        symptoms:
+          type: array
+          items:
+            type: string
+          example: ["CRAMPS", "HEADACHE"]
+          maxItems: 20
+        notes:
+          type: string
+          maxLength: 1000
+          example: "Felt good today, light exercise"
+
+    UpdateDiaryEntryRequest:
+      type: object
+      properties:
+        flowLevel:
+          type: string
+          enum:
+            - NONE
+            - SPOTTING
+            - LIGHT
+            - MEDIUM
+            - HEAVY
+          example: "MEDIUM"
+        moods:
+          type: array
+          items:
+            type: string
+          example: ["HAPPY", "ENERGETIC"]
+          maxItems: 10
+        symptoms:
+          type: array
+          items:
+            type: string
+          example: ["CRAMPS", "HEADACHE"]
+          maxItems: 20
+        notes:
+          type: string
+          maxLength: 1000
+          example: "Felt good today, light exercise"
+
+    MoodType:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "HAPPY"
+        label:
+          type: string
+          example: "Happy"
+        description:
+          type: string
+          example: "Feeling joyful and positive"
+          nullable: true
+        icon:
+          type: string
+          description: Icon identifier or emoji
+          example: "😊"
+          nullable: true
+        category:
+          type: string
+          enum:
+            - POSITIVE
+            - NEGATIVE
+            - NEUTRAL
+          example: "POSITIVE"
+
+    SymptomType:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "CRAMPS"
+        label:
+          type: string
+          example: "Cramps"
+        description:
+          type: string
+          example: "Abdominal or pelvic cramping"
+          nullable: true
+        icon:
+          type: string
+          description: Icon identifier
+          example: "symptom_cramps"
+          nullable: true
+        category:
+          type: string
+          enum:
+            - PHYSICAL
+            - EMOTIONAL
+            - SKIN
+            - DIGESTIVE
+          example: "PHYSICAL"
+        severity:
+          type: boolean
+          description: Whether this symptom supports severity levels
+          example: true
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of entries
+          example: 150
+        limit:
+          type: integer
+          example: 30
+        offset:
+          type: integer
+          example: 0
+        hasMore:
+          type: boolean
+          description: Whether there are more entries available
+          example: true
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "INVALID_REQUEST"
+        message:
+          type: string
+          example: "The request contains invalid data"
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"

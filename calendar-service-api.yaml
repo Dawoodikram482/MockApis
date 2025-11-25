@@ -1,0 +1,433 @@
+openapi: 3.0.3
+info:
+  title: LottiesPeriod - Calendar Service API
+  description: |
+    ICS/WebCal feed generation for calendar integration. Publishes cycle and prediction events 
+    that can be subscribed to by Apple Calendar, Google Calendar, and Outlook.
+    
+    **Authentication**: Token-based authentication for feed access; JWT for management endpoints.
+  version: 1.0.0
+  contact:
+    name: LottiesPeriod API Support
+
+servers:
+  - url: https://api.lottiesperiod.com/v1/calendar
+    description: Production server
+  - url: https://staging-api.lottiesperiod.com/v1/calendar
+    description: Staging server
+  - url: http://localhost:8084/v1/calendar
+    description: Local development server
+
+tags:
+  - name: Feed Management
+    description: Create and manage calendar feed tokens
+  - name: Feed Access
+    description: Public calendar feed endpoints
+
+paths:
+  /feeds:
+    post:
+      tags:
+        - Feed Management
+      summary: Create calendar feed
+      description: Generate a new tokenized calendar feed URL for the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: Calendar feed created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarFeed'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Active feed already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    get:
+      tags:
+        - Feed Management
+      summary: Get current calendar feed
+      description: Retrieve the active calendar feed information for the authenticated user
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Calendar feed retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarFeed'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No calendar feed exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /feeds/rotate:
+    post:
+      tags:
+        - Feed Management
+      summary: Rotate calendar feed token
+      description: Generate a new token for the calendar feed (invalidates old token)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Feed token rotated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CalendarFeed'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No calendar feed exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /feeds/rebuild:
+    post:
+      tags:
+        - Feed Management
+      summary: Rebuild calendar feed
+      description: Force rebuild of calendar events from current cycle and prediction data
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Calendar feed rebuilt successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Calendar feed rebuilt successfully"
+                  eventsCount:
+                    type: integer
+                    example: 12
+                    description: Number of events in the rebuilt feed
+                  lastUpdated:
+                    type: string
+                    format: date-time
+                    example: "2024-11-20T14:22:00Z"
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No calendar feed exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /feeds/{token}.ics:
+    get:
+      tags:
+        - Feed Access
+      summary: Get ICS calendar feed
+      description: Retrieve the ICS calendar feed using the tokenized URL (public endpoint)
+      security: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Unique calendar feed token
+          schema:
+            type: string
+            example: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+      responses:
+        '200':
+          description: ICS calendar feed
+          content:
+            text/calendar:
+              schema:
+                type: string
+                example: |
+                  BEGIN:VCALENDAR
+                  VERSION:2.0
+                  PRODID:-//LottiesPeriod//Calendar Feed//EN
+                  CALSCALE:GREGORIAN
+                  METHOD:PUBLISH
+                  X-WR-CALNAME:LottiesPeriod
+                  X-WR-TIMEZONE:UTC
+                  BEGIN:VEVENT
+                  UID:period-2024-12-15@lottiesperiod.com
+                  DTSTART;VALUE=DATE:20241215
+                  DTEND;VALUE=DATE:20241220
+                  SUMMARY:Period Expected
+                  DESCRIPTION:Your period is expected to start
+                  STATUS:TENTATIVE
+                  TRANSP:TRANSPARENT
+                  END:VEVENT
+                  END:VCALENDAR
+        '404':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: Feed token has been rotated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /feeds/{token}:
+    delete:
+      tags:
+        - Feed Management
+      summary: Delete calendar feed
+      description: Delete the calendar feed and invalidate the token
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          description: Calendar feed token to delete
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Calendar feed deleted successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Calendar feed not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /events:
+    get:
+      tags:
+        - Feed Management
+      summary: List calendar events
+      description: Get all calendar events for the authenticated user
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: startDate
+          in: query
+          description: Filter events from this date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2024-11-01"
+        - name: endDate
+          in: query
+          description: Filter events until this date (inclusive)
+          schema:
+            type: string
+            format: date
+            example: "2024-12-31"
+        - name: eventType
+          in: query
+          description: Filter by event type
+          schema:
+            type: string
+            enum:
+              - PERIOD_START
+              - PERIOD_END
+              - FERTILE_WINDOW_START
+              - FERTILE_WINDOW_END
+              - OVULATION
+      responses:
+        '200':
+          description: Calendar events retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  events:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/CalendarEvent'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    CalendarFeed:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "dd0e8400-e29b-41d4-a716-446655440008"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        token:
+          type: string
+          description: Unique token for accessing the calendar feed
+          example: "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        feedUrl:
+          type: string
+          format: uri
+          description: Full URL for subscribing to the calendar feed
+          example: "https://api.lottiesperiod.com/v1/calendar/feeds/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6.ics"
+        webcalUrl:
+          type: string
+          format: uri
+          description: WebCal URL for one-click subscription
+          example: "webcal://api.lottiesperiod.com/v1/calendar/feeds/a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6.ics"
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-11-15T10:30:00Z"
+        lastAccessedAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-11-20T08:15:00Z"
+          description: Last time the feed was accessed by a calendar client
+        lastUpdatedAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+          description: Last time the feed content was updated
+        eventsCount:
+          type: integer
+          example: 12
+          description: Number of events currently in the feed
+
+    CalendarEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "ee0e8400-e29b-41d4-a716-446655440009"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        eventType:
+          type: string
+          enum:
+            - PERIOD_START
+            - PERIOD_END
+            - FERTILE_WINDOW_START
+            - FERTILE_WINDOW_END
+            - OVULATION
+          example: "PERIOD_START"
+        startDate:
+          type: string
+          format: date
+          example: "2024-12-15"
+        endDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-12-20"
+          description: End date for multi-day events (e.g., period duration)
+        title:
+          type: string
+          example: "Period Expected"
+        description:
+          type: string
+          example: "Your period is expected to start"
+          nullable: true
+        allDay:
+          type: boolean
+          example: true
+          description: Whether this is an all-day event
+        status:
+          type: string
+          enum:
+            - CONFIRMED
+            - TENTATIVE
+            - CANCELLED
+          example: "TENTATIVE"
+          description: Event status (predictions are TENTATIVE, actual cycles are CONFIRMED)
+        source:
+          type: string
+          enum:
+            - PREDICTION
+            - ACTUAL_CYCLE
+          example: "PREDICTION"
+          description: Source of the event data
+        sourceId:
+          type: string
+          format: uuid
+          example: "990e8400-e29b-41d4-a716-446655440004"
+          description: ID of the source prediction or cycle
+        createdAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+        updatedAt:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "INVALID_TOKEN"
+        message:
+          type: string
+          example: "The calendar feed token is invalid or has expired"
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"

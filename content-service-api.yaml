@@ -1,0 +1,639 @@
+openapi: 3.0.3
+info:
+  title: LottiesPeriod - Content Service API
+  description: |
+    Educational blog posts and product recommendations tailored to cycle phase and symptoms.
+    
+    **Authentication**: All endpoints require Bearer JWT token in Authorization header.
+  version: 1.0.0
+  contact:
+    name: LottiesPeriod API Support
+
+servers:
+  - url: https://api.lottiesperiod.com/v1/content
+    description: Production server
+  - url: https://staging-api.lottiesperiod.com/v1/content
+    description: Staging server
+  - url: http://localhost:8083/v1/content
+    description: Local development server
+
+tags:
+  - name: Blogs
+    description: Educational blog posts and articles
+  - name: Products
+    description: Period care products and supplies
+  - name: Recommendations
+    description: Personalized content and product recommendations
+
+security:
+  - BearerAuth: []
+
+paths:
+  /blogs:
+    get:
+      tags:
+        - Blogs
+      summary: List blog posts
+      description: Retrieve list of blog posts with optional filtering
+      parameters:
+        - name: category
+          in: query
+          description: Filter by blog category
+          schema:
+            type: string
+            enum:
+              - HEALTH
+              - NUTRITION
+              - EXERCISE
+              - MENTAL_HEALTH
+              - GENERAL
+        - name: tags
+          in: query
+          description: Filter by tags (comma-separated)
+          schema:
+            type: string
+            example: "cramps,pain-relief"
+        - name: limit
+          in: query
+          description: Maximum number of posts to return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          description: Number of posts to skip
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of blog posts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BlogPost'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /blogs/{blogId}:
+    get:
+      tags:
+        - Blogs
+      summary: Get blog post by ID
+      description: Retrieve detailed information about a specific blog post
+      parameters:
+        - name: blogId
+          in: path
+          required: true
+          description: Unique identifier of the blog post
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Blog post retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BlogPostDetail'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Blog post not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /blogs/search:
+    get:
+      tags:
+        - Blogs
+      summary: Search blog posts
+      description: Search blog posts by keywords
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Search query
+          schema:
+            type: string
+            example: "managing period pain"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+      responses:
+        '200':
+          description: Search results retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  posts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/BlogPost'
+                  totalResults:
+                    type: integer
+                    example: 5
+        '400':
+          description: Invalid search query
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /products:
+    get:
+      tags:
+        - Products
+      summary: List products
+      description: Retrieve list of period care products
+      parameters:
+        - name: category
+          in: query
+          description: Filter by product category
+          schema:
+            type: string
+            enum:
+              - PADS
+              - TAMPONS
+              - MENSTRUAL_CUPS
+              - PERIOD_UNDERWEAR
+              - PAIN_RELIEF
+              - SUPPLEMENTS
+              - SKINCARE
+        - name: flowLevel
+          in: query
+          description: Filter by recommended flow level
+          schema:
+            type: string
+            enum:
+              - LIGHT
+              - MEDIUM
+              - HEAVY
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+      responses:
+        '200':
+          description: List of products retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  products:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Product'
+                  pagination:
+                    $ref: '#/components/schemas/Pagination'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /products/{productId}:
+    get:
+      tags:
+        - Products
+      summary: Get product by ID
+      description: Retrieve detailed information about a specific product
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          description: Unique identifier of the product
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Product retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductDetail'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /recommendations/content:
+    get:
+      tags:
+        - Recommendations
+      summary: Get personalized blog recommendations
+      description: Get blog posts recommended based on current cycle phase and recent symptoms
+      responses:
+        '200':
+          description: Recommendations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        post:
+                          $ref: '#/components/schemas/BlogPost'
+                        reason:
+                          type: string
+                          example: "Based on your current cycle phase"
+                        relevanceScore:
+                          type: number
+                          format: float
+                          minimum: 0
+                          maximum: 1
+                          example: 0.92
+                  context:
+                    type: object
+                    properties:
+                      cyclePhase:
+                        type: string
+                        enum:
+                          - MENSTRUAL
+                          - FOLLICULAR
+                          - OVULATION
+                          - LUTEAL
+                        example: "LUTEAL"
+                      recentSymptoms:
+                        type: array
+                        items:
+                          type: string
+                        example: ["CRAMPS", "FATIGUE"]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /recommendations/products:
+    get:
+      tags:
+        - Recommendations
+      summary: Get personalized product recommendations
+      description: Get products recommended based on flow level and symptoms
+      responses:
+        '200':
+          description: Recommendations retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recommendations:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        product:
+                          $ref: '#/components/schemas/Product'
+                        reason:
+                          type: string
+                          example: "Recommended for heavy flow days"
+                        relevanceScore:
+                          type: number
+                          format: float
+                          minimum: 0
+                          maximum: 1
+                          example: 0.88
+                  context:
+                    type: object
+                    properties:
+                      currentFlowLevel:
+                        type: string
+                        enum:
+                          - NONE
+                          - SPOTTING
+                          - LIGHT
+                          - MEDIUM
+                          - HEAVY
+                        example: "HEAVY"
+                        nullable: true
+                      recentSymptoms:
+                        type: array
+                        items:
+                          type: string
+                        example: ["CRAMPS"]
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    BlogPost:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "bb0e8400-e29b-41d4-a716-446655440006"
+        title:
+          type: string
+          example: "Managing Period Pain: Natural Remedies"
+        slug:
+          type: string
+          example: "managing-period-pain-natural-remedies"
+        excerpt:
+          type: string
+          maxLength: 300
+          example: "Discover effective natural remedies to help manage period pain and discomfort."
+        featuredImageUrl:
+          type: string
+          format: uri
+          example: "https://cdn.lottiesperiod.com/blog/period-pain-remedies.jpg"
+          nullable: true
+        category:
+          type: string
+          enum:
+            - HEALTH
+            - NUTRITION
+            - EXERCISE
+            - MENTAL_HEALTH
+            - GENERAL
+          example: "HEALTH"
+        tags:
+          type: array
+          items:
+            type: string
+          example: ["cramps", "pain-relief", "natural-remedies"]
+        author:
+          type: object
+          properties:
+            name:
+              type: string
+              example: "Dr. Sarah Johnson"
+            title:
+              type: string
+              example: "Women's Health Specialist"
+            avatarUrl:
+              type: string
+              format: uri
+              nullable: true
+        readTimeMinutes:
+          type: integer
+          example: 5
+        publishedAt:
+          type: string
+          format: date-time
+          example: "2024-10-15T10:00:00Z"
+
+    BlogPostDetail:
+      allOf:
+        - $ref: '#/components/schemas/BlogPost'
+        - type: object
+          properties:
+            content:
+              type: string
+              description: Full HTML content of the blog post
+              example: "<h2>Introduction</h2><p>Period pain affects millions...</p>"
+            relatedPosts:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  title:
+                    type: string
+                  slug:
+                    type: string
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "cc0e8400-e29b-41d4-a716-446655440007"
+        name:
+          type: string
+          example: "Ultra Comfort Organic Pads"
+        brand:
+          type: string
+          example: "EcoFlow"
+        category:
+          type: string
+          enum:
+            - PADS
+            - TAMPONS
+            - MENSTRUAL_CUPS
+            - PERIOD_UNDERWEAR
+            - PAIN_RELIEF
+            - SUPPLEMENTS
+            - SKINCARE
+          example: "PADS"
+        shortDescription:
+          type: string
+          maxLength: 200
+          example: "100% organic cotton pads for sensitive skin"
+        imageUrl:
+          type: string
+          format: uri
+          example: "https://cdn.lottiesperiod.com/products/organic-pads.jpg"
+        price:
+          type: object
+          properties:
+            amount:
+              type: number
+              format: float
+              example: 12.99
+            currency:
+              type: string
+              example: "USD"
+        rating:
+          type: object
+          properties:
+            average:
+              type: number
+              format: float
+              minimum: 0
+              maximum: 5
+              example: 4.5
+            count:
+              type: integer
+              example: 234
+        recommendedFor:
+          type: object
+          properties:
+            flowLevels:
+              type: array
+              items:
+                type: string
+                enum:
+                  - LIGHT
+                  - MEDIUM
+                  - HEAVY
+              example: ["LIGHT", "MEDIUM"]
+            symptoms:
+              type: array
+              items:
+                type: string
+              example: ["SENSITIVE_SKIN"]
+        availabilityStatus:
+          type: string
+          enum:
+            - IN_STOCK
+            - LOW_STOCK
+            - OUT_OF_STOCK
+          example: "IN_STOCK"
+
+    ProductDetail:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            fullDescription:
+              type: string
+              example: "Our Ultra Comfort pads are made from 100% certified organic cotton..."
+            features:
+              type: array
+              items:
+                type: string
+              example:
+                - "100% organic cotton"
+                - "Hypoallergenic"
+                - "Biodegradable packaging"
+            specifications:
+              type: object
+              additionalProperties:
+                type: string
+              example:
+                absorbency: "Medium"
+                size: "Regular"
+                quantity: "24 pads"
+            affiliateLink:
+              type: string
+              format: uri
+              nullable: true
+              example: "https://partner.example.com/product/12345"
+            reviews:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  userName:
+                    type: string
+                  rating:
+                    type: integer
+                    minimum: 1
+                    maximum: 5
+                  comment:
+                    type: string
+                  createdAt:
+                    type: string
+                    format: date-time
+
+    Pagination:
+      type: object
+      properties:
+        total:
+          type: integer
+          example: 45
+        limit:
+          type: integer
+          example: 20
+        offset:
+          type: integer
+          example: 0
+        hasMore:
+          type: boolean
+          example: true
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "NOT_FOUND"
+        message:
+          type: string
+          example: "The requested resource was not found"
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"

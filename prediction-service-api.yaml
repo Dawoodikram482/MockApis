@@ -1,0 +1,571 @@
+openapi: 3.0.3
+info:
+  title: LottiesPeriod - Prediction Service API
+  description: |
+    Period and fertile window predictions using median and Bayesian renewal models.
+    Fetches cycle data from Cycle Service for calculation.
+    
+    **Authentication**: All endpoints require Bearer JWT token in Authorization header.
+  version: 1.0.0
+  contact:
+    name: LottiesPeriod API Support
+
+servers:
+  - url: https://api.lottiesperiod.com/v1/prediction
+    description: Production server
+  - url: https://staging-api.lottiesperiod.com/v1/prediction
+    description: Staging server
+  - url: http://localhost:8082/v1/prediction
+    description: Local development server
+
+tags:
+  - name: Predictions
+    description: Period and fertile window predictions
+  - name: Context
+    description: Prediction context for other services (Calendar, Content, Notifications)
+
+security:
+  - BearerAuth: []
+
+paths:
+  /current:
+    get:
+      tags:
+        - Predictions
+      summary: Get current predictions
+      description: Retrieve the most recent prediction for next period and fertile window
+      responses:
+        '200':
+          description: Current prediction retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prediction'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No prediction available (insufficient cycle data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /recalculate:
+    post:
+      tags:
+        - Predictions
+      summary: Trigger prediction recalculation
+      description: Force recalculation of predictions based on latest cycle data from Cycle Service
+      responses:
+        '200':
+          description: Prediction recalculated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Prediction'
+        '400':
+          description: Cannot recalculate (insufficient data)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /context:
+    get:
+      tags:
+        - Context
+      summary: Get prediction context
+      description: |
+        Internal endpoint for other services to fetch prediction context including
+        current cycle phase, upcoming events, and fertile window information.
+        Used by Calendar, Content, and Notifications services.
+      responses:
+        '200':
+          description: Prediction context retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionContext'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: No prediction data available
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /context/user/{userId}:
+    get:
+      tags:
+        - Context
+      summary: Get prediction context for specific user
+      description: Internal endpoint for services to fetch prediction context for any user
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Prediction context retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionContext'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: User or prediction data not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /history:
+    get:
+      tags:
+        - Predictions
+      summary: Get prediction history
+      description: Retrieve historical predictions with accuracy metrics compared to actual cycle starts
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+            minimum: 1
+            maximum: 50
+          description: Number of historical predictions to return
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+          description: Pagination offset
+      responses:
+        '200':
+          description: Prediction history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  predictions:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PredictionHistory'
+                  total:
+                    type: integer
+                    example: 12
+                  averageAccuracy:
+                    type: number
+                    format: float
+                    description: Average prediction accuracy in days
+                    example: 1.2
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /data-quality:
+    get:
+      tags:
+        - Predictions
+      summary: Check data quality for predictions
+      description: |
+        Assess whether there is sufficient cycle data for accurate predictions.
+        Returns data quality score and recommendations.
+      responses:
+        '200':
+          description: Data quality assessment completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataQualityAssessment'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /settings:
+    get:
+      tags:
+        - Predictions
+      summary: Get prediction settings
+      description: Retrieve user's prediction algorithm preferences and configuration
+      responses:
+        '200':
+          description: Settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionSettings'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Predictions
+      summary: Update prediction settings
+      description: Update user's prediction algorithm preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PredictionSettings'
+      responses:
+        '200':
+          description: Settings updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PredictionSettings'
+        '400':
+          description: Invalid settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Prediction:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "990e8400-e29b-41d4-a716-446655440004"
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        predictionDate:
+          type: string
+          format: date-time
+          description: When this prediction was generated
+          example: "2024-11-20T14:22:00Z"
+        modelUsed:
+          type: string
+          enum:
+            - MEDIAN
+            - BAYESIAN_RENEWAL
+          example: "BAYESIAN_RENEWAL"
+          description: Prediction algorithm used
+        nextPeriod:
+          $ref: '#/components/schemas/PeriodPrediction'
+        fertileWindow:
+          $ref: '#/components/schemas/FertileWindowPrediction'
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.85
+          description: Overall prediction confidence score
+        basedOnCycles:
+          type: integer
+          description: Number of historical cycles used for this prediction
+          example: 6
+
+    PeriodPrediction:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+          example: "2024-12-15"
+        startDateRange:
+          type: object
+          properties:
+            earliest:
+              type: string
+              format: date
+              example: "2024-12-13"
+            latest:
+              type: string
+              format: date
+              example: "2024-12-17"
+        expectedDuration:
+          type: integer
+          description: Expected period duration in days
+          example: 5
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.87
+
+    FertileWindowPrediction:
+      type: object
+      properties:
+        startDate:
+          type: string
+          format: date
+          example: "2024-11-28"
+        endDate:
+          type: string
+          format: date
+          example: "2024-12-03"
+        ovulationDate:
+          type: string
+          format: date
+          example: "2024-12-01"
+          description: Predicted ovulation day
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.82
+
+    PredictionContext:
+      type: object
+      description: Simplified context for other services
+      properties:
+        userId:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        currentPhase:
+          type: string
+          enum:
+            - MENSTRUAL
+            - FOLLICULAR
+            - OVULATION
+            - LUTEAL
+            - UNKNOWN
+          example: "LUTEAL"
+          description: Current cycle phase based on active cycle and predictions
+        dayInCycle:
+          type: integer
+          nullable: true
+          example: 21
+          description: Current day in the active cycle (null if no active cycle)
+        upcomingEvents:
+          type: array
+          items:
+            type: object
+            properties:
+              eventType:
+                type: string
+                enum:
+                  - PERIOD_START
+                  - FERTILE_WINDOW_START
+                  - OVULATION
+                  - FERTILE_WINDOW_END
+              date:
+                type: string
+                format: date
+              daysUntil:
+                type: integer
+          example:
+            - eventType: "FERTILE_WINDOW_START"
+              date: "2024-11-28"
+              daysUntil: 8
+            - eventType: "OVULATION"
+              date: "2024-12-01"
+              daysUntil: 11
+        nextPeriod:
+          type: object
+          nullable: true
+          properties:
+            startDate:
+              type: string
+              format: date
+            daysUntil:
+              type: integer
+          example:
+            startDate: "2024-12-15"
+            daysUntil: 25
+        inFertileWindow:
+          type: boolean
+          example: false
+          description: Whether user is currently in predicted fertile window
+        lastUpdated:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"
+
+    PredictionHistory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "990e8400-e29b-41d4-a716-446655440004"
+        predictionDate:
+          type: string
+          format: date-time
+          example: "2024-10-15T10:00:00Z"
+        predictedPeriodStart:
+          type: string
+          format: date
+          example: "2024-11-12"
+        actualPeriodStart:
+          type: string
+          format: date
+          nullable: true
+          example: "2024-11-13"
+          description: Actual period start (null if cycle hasn't started yet)
+        accuracyDays:
+          type: integer
+          nullable: true
+          example: 1
+          description: Difference in days between predicted and actual (null if not yet confirmed)
+        modelUsed:
+          type: string
+          enum:
+            - MEDIAN
+            - BAYESIAN_RENEWAL
+          example: "BAYESIAN_RENEWAL"
+        confidence:
+          type: number
+          format: float
+          example: 0.85
+
+    DataQualityAssessment:
+      type: object
+      properties:
+        sufficientData:
+          type: boolean
+          example: true
+          description: Whether there is enough data for predictions
+        cycleCount:
+          type: integer
+          example: 6
+          description: Number of completed cycles available
+        minimumCyclesRequired:
+          type: integer
+          example: 2
+        dataQualityScore:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          example: 0.78
+          description: Overall data quality score (0-1)
+        recommendations:
+          type: array
+          items:
+            type: string
+          example:
+            - "Log more consistent period start dates"
+            - "Track cycle for 3 more months to improve accuracy"
+        issues:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+                enum:
+                  - INSUFFICIENT_CYCLES
+                  - IRREGULAR_CYCLES
+                  - MISSING_DATA
+                  - OUTLIER_DETECTED
+              severity:
+                type: string
+                enum:
+                  - LOW
+                  - MEDIUM
+                  - HIGH
+              message:
+                type: string
+          example:
+            - type: "IRREGULAR_CYCLES"
+              severity: "MEDIUM"
+              message: "Cycle lengths vary significantly (range: 24-35 days)"
+
+    PredictionSettings:
+      type: object
+      properties:
+        preferredModel:
+          type: string
+          enum:
+            - AUTO
+            - MEDIAN
+            - BAYESIAN_RENEWAL
+          default: AUTO
+          example: "AUTO"
+          description: Preferred prediction model (AUTO selects best based on data)
+        minimumConfidenceThreshold:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          default: 0.7
+          example: 0.7
+          description: Minimum confidence score to show predictions
+        notifyOnLowConfidence:
+          type: boolean
+          default: true
+          example: true
+          description: Whether to notify user when prediction confidence is low
+        includeFertileWindow:
+          type: boolean
+          default: true
+          example: true
+          description: Whether to calculate and show fertile window predictions
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          example: "INSUFFICIENT_DATA"
+        message:
+          type: string
+          example: "At least 2 completed cycles required for prediction"
+        details:
+          type: object
+          additionalProperties: true
+          nullable: true
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-11-20T14:22:00Z"

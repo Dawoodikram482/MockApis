@@ -1,0 +1,333 @@
+openapi: 3.0.3
+info:
+  title: Notifications Service API
+  version: 1.0.0
+  description: |
+    Schedules and sends push notifications via Firebase Cloud Messaging (FCM).
+    
+    **Key Responsibilities:**
+    - Schedule reminders for upcoming periods and fertile windows
+    - Send push notifications via FCM based on user preferences
+    - Respect user notification preferences and consent settings
+    - Log delivery status for auditing and debugging
+    - Fetch user preferences and push tokens from User Service
+    - Fetch prediction context from Prediction Service
+    
+    **External Dependencies:**
+    - User Service: Fetch notification preferences and push tokens
+    - Prediction Service: Fetch upcoming events and windows
+    - Firebase Cloud Messaging (FCM): Deliver push notifications
+    
+    **Authentication:**
+    All endpoints require JWT Bearer token issued by Zitadel IdP.
+
+servers:
+  - url: http://localhost:8088
+    description: Mock notifications service
+
+tags:
+  - name: Notifications
+    description: User-facing notification endpoints
+  - name: Admin
+    description: Administrative and scheduler endpoints (internal)
+
+security:
+  - bearerAuth: []
+
+paths:
+  /preferences:
+    get:
+      summary: Get user's notification preferences
+      description: Returns the current user's notification preferences. This is a read-only view from the Notifications Service perspective (actual storage is in User Service).
+      tags:
+        - Notifications
+      responses:
+        '200':
+          description: Notification preferences retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationPreferences'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /history:
+    get:
+      summary: Get notification delivery history
+      description: Returns the history of notifications sent to the current user, including delivery status.
+      tags:
+        - Notifications
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of notifications to return
+          schema:
+            type: integer
+            default: 50
+            minimum: 1
+            maximum: 200
+        - name: offset
+          in: query
+          description: Number of notifications to skip for pagination
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+      responses:
+        '200':
+          description: Notification history retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/NotificationLog'
+                  total:
+                    type: integer
+                    description: Total number of notifications
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /test:
+    post:
+      summary: Send a test notification
+      description: Sends a test push notification to the current user's registered device(s).
+      tags:
+        - Notifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  example: "Test Notification"
+                body:
+                  type: string
+                  example: "This is a test notification from LottiesPeriod"
+              required:
+                - title
+                - body
+      responses:
+        '200':
+          description: Test notification sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Test notification sent successfully"
+                  deliveryId:
+                    type: string
+                    format: uuid
+                    example: "550e8400-e29b-41d4-a716-446655440000"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/run:
+    post:
+      summary: Manually trigger notification scheduler (Admin/Internal)
+      description: |
+        Manually triggers the notification scheduler to check for due reminders and send notifications.
+        This endpoint is typically called by a cron job or background worker.
+        
+        **Internal Use Only** - Should be protected by API gateway or internal network.
+      tags:
+        - Admin
+      security: []
+      responses:
+        '200':
+          description: Scheduler run completed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: "Scheduler run completed"
+                  notificationsSent:
+                    type: integer
+                    example: 15
+                  notificationsFailed:
+                    type: integer
+                    example: 2
+                  processingTimeMs:
+                    type: integer
+                    example: 1234
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /scheduler/status:
+    get:
+      summary: Get scheduler status (Admin/Internal)
+      description: Returns the current status of the notification scheduler.
+      tags:
+        - Admin
+      security: []
+      responses:
+        '200':
+          description: Scheduler status retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  isRunning:
+                    type: boolean
+                    example: false
+                  lastRun:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T10:30:00Z"
+                  nextScheduledRun:
+                    type: string
+                    format: date-time
+                    example: "2024-01-15T11:00:00Z"
+                  totalNotificationsSent:
+                    type: integer
+                    example: 1523
+                  totalNotificationsFailed:
+                    type: integer
+                    example: 47
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token issued by Zitadel IdP
+
+  schemas:
+    NotificationPreferences:
+      type: object
+      description: User's notification preferences (mirrored from User Service)
+      properties:
+        periodReminder:
+          type: boolean
+          description: Send reminder before expected period start
+          example: true
+        periodReminderDaysBefore:
+          type: integer
+          description: Days before period to send reminder
+          example: 2
+        fertileWindowReminder:
+          type: boolean
+          description: Send reminder at start of fertile window
+          example: true
+        ovulationReminder:
+          type: boolean
+          description: Send reminder on predicted ovulation day
+          example: false
+        dailyLogReminder:
+          type: boolean
+          description: Send daily reminder to log symptoms
+          example: true
+        dailyLogReminderTime:
+          type: string
+          format: time
+          description: Time of day to send daily log reminder (HH:mm format)
+          example: "20:00"
+
+    NotificationLog:
+      type: object
+      description: Record of a sent notification
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        type:
+          type: string
+          enum:
+            - period_reminder
+            - fertile_window_reminder
+            - ovulation_reminder
+            - daily_log_reminder
+            - test_notification
+          example: "period_reminder"
+        title:
+          type: string
+          example: "Period Starting Soon"
+        body:
+          type: string
+          example: "Your period is expected to start in 2 days"
+        status:
+          type: string
+          enum:
+            - sent
+            - failed
+            - pending
+          example: "sent"
+        sentAt:
+          type: string
+          format: date-time
+          example: "2024-01-15T08:00:00Z"
+        deliveredAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: "2024-01-15T08:00:03Z"
+        error:
+          type: string
+          nullable: true
+          description: Error message if delivery failed
+          example: null
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          example: "Invalid request"
+        message:
+          type: string
+          example: "The request body is malformed"
+        timestamp:
+          type: string
+          format: date-time
+          example: "2024-01-15T10:30:00Z"
+
+  responses:
+    BadRequest:
+      description: Bad request - invalid input
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    Unauthorized:
+      description: Unauthorized - missing or invalid JWT token
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
