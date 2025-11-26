@@ -11,11 +11,13 @@ info:
     name: LottiesPeriod API Support
 
 servers:
-  - url: https://api.lottiesperiod.com/v1/auth
+  - url: https://6463711e-6d80-462d-b8f5-630be77a4bfd.mock.pstmn.io/v1
+    description: Postman Mock Server
+  - url: https://api.lottiesperiod.com/v1
     description: Production server
-  - url: https://staging-api.lottiesperiod.com/v1/auth
+  - url: https://staging-api.lottiesperiod.com/v1
     description: Staging server
-  - url: http://localhost:8080/v1/auth
+  - url: http://localhost:8080/v1
     description: Local development server
 
 tags:

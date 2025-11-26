@@ -10,11 +10,13 @@ info:
     name: LottiesPeriod API Support
 
 servers:
-  - url: https://api.lottiesperiod.com/v1/users
+  - url: https://6463711e-6d80-462d-b8f5-630be77a4bfd.mock.pstmn.io/v1
+    description: Postman Mock Server
+  - url: https://api.lottiesperiod.com/v1
     description: Production server
-  - url: https://staging-api.lottiesperiod.com/v1/users
+  - url: https://staging-api.lottiesperiod.com/v1
     description: Staging server
-  - url: http://localhost:8086/v1/users
+  - url: http://localhost:8086/v1
     description: Local development server
 
 tags:
@@ -31,7 +33,7 @@ security:
   - BearerAuth: []
 
 paths:
-  /me:
+  /users/me:
     get:
       tags:
         - Profile
@@ -82,7 +84,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /{userId}:
+  /users/{userId}:
     get:
       tags:
         - Profile
@@ -121,7 +123,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /{userId}/consents:
+  /users/{userId}/consents:
     get:
       tags:
         - Consents
@@ -159,7 +161,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /me/consents:
+  /users/me/consents:
     get:
       tags:
         - Consents
@@ -215,7 +217,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /me/notification-preferences:
+  /users/me/notification-preferences:
     get:
       tags:
         - Notification Preferences
@@ -276,7 +278,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /{userId}/prefs-and-tokens:
+  /users/{userId}/prefs-and-tokens:
     get:
       tags:
         - Notification Preferences
@@ -325,7 +327,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /me/push-token:
+  /users/me/push-token:
     put:
       tags:
         - Push Tokens

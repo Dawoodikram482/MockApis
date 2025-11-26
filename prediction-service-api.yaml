@@ -11,11 +11,13 @@ info:
     name: LottiesPeriod API Support
 
 servers:
-  - url: https://api.lottiesperiod.com/v1/prediction
+  - url: https://6463711e-6d80-462d-b8f5-630be77a4bfd.mock.pstmn.io/v1
+    description: Postman Mock Server
+  - url: https://api.lottiesperiod.com/v1
     description: Production server
-  - url: https://staging-api.lottiesperiod.com/v1/prediction
+  - url: https://staging-api.lottiesperiod.com/v1
     description: Staging server
-  - url: http://localhost:8082/v1/prediction
+  - url: http://localhost:8082/v1
     description: Local development server
 
 tags:
@@ -28,7 +30,7 @@ security:
   - BearerAuth: []
 
 paths:
-  /current:
+  /prediction/current:
     get:
       tags:
         - Predictions
@@ -54,7 +56,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /recalculate:
+  /prediction/recalculate:
     post:
       tags:
         - Predictions
@@ -80,7 +82,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /context:
+  /prediction/context:
     get:
       tags:
         - Context
@@ -109,7 +111,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /context/user/{userId}:
+  /prediction/context/user/{userId}:
     get:
       tags:
         - Context
@@ -142,7 +144,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /history:
+  /prediction/history:
     get:
       tags:
         - Predictions
@@ -191,7 +193,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /data-quality:
+  /prediction/data-quality:
     get:
       tags:
         - Predictions
@@ -213,7 +215,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /settings:
+  /prediction/settings:
     get:
       tags:
         - Predictions

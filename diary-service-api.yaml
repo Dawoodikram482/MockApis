@@ -10,11 +10,13 @@ info:
     name: LottiesPeriod API Support
 
 servers:
-  - url: https://api.lottiesperiod.com/v1/diary
+  - url: https://6463711e-6d80-462d-b8f5-630be77a4bfd.mock.pstmn.io/v1
+    description: Postman Mock Server
+  - url: https://api.lottiesperiod.com/v1
     description: Production server
-  - url: https://staging-api.lottiesperiod.com/v1/diary
+  - url: https://staging-api.lottiesperiod.com/v1
     description: Staging server
-  - url: http://localhost:8081/v1/diary
+  - url: http://localhost:8081/v1
     description: Local development server
 
 tags:
@@ -27,7 +29,7 @@ security:
   - BearerAuth: []
 
 paths:
-  /entries:
+  /diary/entries:
     get:
       tags:
         - Diary Entries
@@ -127,7 +129,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /entries/{entryId}:
+  /diary/entries/{entryId}:
     get:
       tags:
         - Diary Entries
@@ -235,7 +237,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /entries/date/{date}:
+  /diary/entries/date/{date}:
     get:
       tags:
         - Diary Entries
@@ -270,7 +272,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /config/moods:
+  /diary/config/moods:
     get:
       tags:
         - Reference Data
@@ -295,7 +297,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
-  /config/symptoms:
+  /diary/config/symptoms:
     get:
       tags:
         - Reference Data
